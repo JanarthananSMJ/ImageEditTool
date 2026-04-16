@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Layers, Image, Type, Square, Circle, RectangleHorizontal as RectHorizontal, ChevronDown, ChevronRight, Trash2, Copy, ArrowUp, ArrowDown, Lock, Unlock, FlipHorizontal, FlipVertical, Sun, Contrast, Droplets, Crop as CropIcon, PencilRuler, Upload } from 'lucide-react';
+import { Layers, Image, Type, Square, Circle, RectangleHorizontal as RectHorizontal, ChevronDown, ChevronRight, Trash2, Copy, ArrowUp, ArrowDown, Lock, Unlock, FlipHorizontal, FlipVertical, Sun, Contrast, Droplets, Crop as CropIcon, PencilRuler, Upload, RotateCw, Maximize2 } from 'lucide-react';
 import type { Layer, ImageLayer, TextLayer, Crop, CropType } from '../types/editor';
 
 interface SidebarProps {
@@ -679,6 +679,36 @@ function ImageEditControls({
           min={0}
           max={100}
         />
+      </div>
+      <div>
+        <label className="text-xs text-gray-400 mb-2 block">Scale</label>
+        <div className="flex items-center gap-3">
+          <Maximize2 className="w-4 h-4 text-gray-500" />
+          <input
+            type="range"
+            value={layer.scaleX * 100}
+            onChange={(e) => onUpdateLayer(layer.id, { scaleX: parseInt(e.target.value) / 100, scaleY: parseInt(e.target.value) / 100 })}
+            className="flex-1"
+            min={10}
+            max={300}
+          />
+          <span className="text-xs w-10 text-right">{Math.round(layer.scaleX * 100)}%</span>
+        </div>
+      </div>
+      <div>
+        <label className="text-xs text-gray-400 mb-2 block">Rotate</label>
+        <div className="flex items-center gap-3">
+          <RotateCw className="w-4 h-4 text-gray-500" />
+          <input
+            type="range"
+            value={layer.rotation}
+            onChange={(e) => onUpdateLayer(layer.id, { rotation: parseInt(e.target.value) })}
+            className="flex-1"
+            min={-180}
+            max={180}
+          />
+          <span className="text-xs w-10 text-right">{layer.rotation}°</span>
+        </div>
       </div>
       <div className="flex gap-2">
         <button

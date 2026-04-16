@@ -35,6 +35,9 @@ export default function CanvasEditor({
   const [imageCache, setImageCache] = useState<Map<string, HTMLImageElement>>(new Map());
   const [zoom, setZoom] = useState(100);
   const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null);
+  const [canvasOffset, setCanvasOffset] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0, offsetX: 0, offsetY: 0 });
 
   const selectedLayer = layers.find(l => l.id === selectedLayerId) as ImageLayer | TextLayer | null;
 
@@ -166,13 +169,15 @@ export default function CanvasEditor({
     const saturation = 100 + layer.saturation;
     ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
 
-    const cx = layer.x + layer.width / 2;
-    const cy = layer.y + layer.height / 2;
+    const cx = layer.x + (layer.width * layer.scaleX) / 2;
+    const cy = layer.y + (layer.height * layer.scaleY) / 2;
+    const scaledWidth = layer.width * layer.scaleX;
+    const scaledHeight = layer.height * layer.scaleY;
 
     ctx.translate(cx, cy);
     ctx.rotate((layer.rotation * Math.PI) / 180);
     ctx.scale(layer.flipH ? -1 : 1, layer.flipV ? -1 : 1);
-    ctx.drawImage(img, -layer.width / 2, -layer.height / 2, layer.width, layer.height);
+    ctx.drawImage(img, -scaledWidth / 2, -scaledHeight / 2, scaledWidth, scaledHeight);
     ctx.filter = 'none';
   };
 
@@ -359,6 +364,13 @@ export default function CanvasEditor({
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button === 1 || e.shiftKey) {
+      e.preventDefault();
+      setIsPanning(true);
+      setPanStart({ x: e.clientX, y: e.clientY, offsetX: canvasOffset.x, offsetY: canvasOffset.y });
+      return;
+    }
+
     const rect = canvasRef.current!.getBoundingClientRect();
     const mx = (e.clientX - rect.left) * (canvasWidth / rect.width);
     const my = (e.clientY - rect.top) * (canvasHeight / rect.height);
@@ -402,6 +414,13 @@ export default function CanvasEditor({
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    if (isPanning) {
+      const dx = e.clientX - panStart.x;
+      const dy = e.clientY - panStart.y;
+      setCanvasOffset({ x: panStart.offsetX + dx, y: panStart.offsetY + dy });
+      return;
+    }
+
     const rect = canvasRef.current!.getBoundingClientRect();
     const mx = (e.clientX - rect.left) * (canvasWidth / rect.width);
     const my = (e.clientY - rect.top) * (canvasHeight / rect.height);
@@ -464,6 +483,7 @@ export default function CanvasEditor({
     setIsResizing(false);
     setIsRotating(false);
     setIsDraggingCrop(false);
+    setIsPanning(false);
     setActiveHandle(null);
   };
 
@@ -597,23 +617,48 @@ export default function CanvasEditor({
   const handleTouchStartZoom = (e: React.TouchEvent) => {
     if (e.touches.length === 2) {
       e.preventDefault();
-      setLastTouchDistance(getTouchDistance(e.touches));
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const dist = getTouchDistance(e.touches);
+      if (lastTouchDistance === null) {
+        setLastTouchDistance(dist);
+        const midX = (touch1.clientX + touch2.clientX) / 2;
+        const midY = (touch1.clientY + touch2.clientY) / 2;
+        setPanStart({ x: midX, y: midY, offsetX: canvasOffset.x, offsetY: canvasOffset.y });
+      } else {
+        if (Math.abs(dist - lastTouchDistance) < 30) {
+          setIsPanning(true);
+        }
+      }
     }
   };
 
   const handleTouchMoveZoom = (e: React.TouchEvent) => {
     if (e.touches.length === 2 && lastTouchDistance !== null) {
-      e.preventDefault();
-      const currentDistance = getTouchDistance(e.touches);
-      const delta = (currentDistance - lastTouchDistance) * 0.5;
-      const newZoom = Math.max(25, Math.min(200, zoom + delta));
-      setZoom(newZoom);
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const dist = getTouchDistance(e.touches);
+      const currentDistance = dist;
+      
+      if (isPanning) {
+        const midX = (touch1.clientX + touch2.clientX) / 2;
+        const midY = (touch1.clientY + touch2.clientY) / 2;
+        const dx = midX - panStart.x;
+        const dy = midY - panStart.y;
+        setCanvasOffset({ x: panStart.offsetX + dx, y: panStart.offsetY + dy });
+      } else {
+        e.preventDefault();
+        const delta = (currentDistance - lastTouchDistance) * 0.5;
+        const newZoom = Math.max(25, Math.min(200, zoom + delta));
+        setZoom(newZoom);
+      }
       setLastTouchDistance(currentDistance);
     }
   };
 
   const handleTouchEndZoom = () => {
     setLastTouchDistance(null);
+    setIsPanning(false);
   };
 
   const hasTemplate = layers.some(l => l.type === 'template');
@@ -625,7 +670,7 @@ export default function CanvasEditor({
       <div
         className="relative shadow-lg"
         style={{
-          transform: `scale(${zoom / 100})`,
+          transform: `translate(${canvasOffset.x}px, ${canvasOffset.y}px) scale(${zoom / 100})`,
           transformOrigin: 'center',
         }}
       >
