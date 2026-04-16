@@ -1,0 +1,23 @@
+# Election Poster Maker - Build Progress
+
+## Current Phase: COMPLETED - Phase 8: Sidebar Redesign
+
+## Completed Steps:
+1. ✅ Project setup — Vite + React + TS + Tailwind
+2. ✅ Types and constants: editor.ts, exportHelper.ts
+3. ✅ Layer manager hook — useLayerManager.ts
+4. ✅ App shell layout - all components
+5. ✅ Keyboard shortcuts + undo/redo
+6. ✅ Polish - empty states, toasts, error handling
+7. ✅ Final QA: Build passes, dev server runs
+8. ✅ Sidebar Redesign:
+   - Minimal collapsible sidebar (hover to expand)
+   - Canvas size selector in sidebar
+   - Upload images/templates in sidebar
+   - Crop options: Circle, Square, Rectangle (16:9)
+   - Text tool moved to sidebar
+   - Image/text edit tools moved to sidebar
+
+## Project Complete!
+Run with: `npm run dev`
+Open: http://localhost:5173/
