@@ -141,7 +141,7 @@ function App() {
             </div>
           )
         )}
-        <div className="flex items-center justify-center w-full h-full">
+        <div className={`flex items-center justify-center w-full h-full ${isMobile ? 'pb-36' : ''}`}>
           <CanvasEditor
             layers={state.layers}
             canvasWidth={state.canvasWidth}

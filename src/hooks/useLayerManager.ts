@@ -86,7 +86,7 @@ function editorReducer(state: EditorState, action: LayerAction): EditorState {
         flipH: false,
         flipV: false,
         visible: true,
-        locked: false,
+        locked: true,
       };
       if (existingTemplateIndex >= 0) {
         const newLayers = [...state.layers];

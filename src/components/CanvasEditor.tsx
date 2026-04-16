@@ -405,6 +405,10 @@ export default function CanvasEditor({
 
     const layerId = hitTestLayer(mx, my);
     if (layerId) {
+      const layer = layers.find(l => l.id === layerId);
+      if (layer && layer.locked) {
+        return;
+      }
       onSelectLayer(layerId);
       setIsDragging(true);
       setDragStart({ x: mx, y: my, layerX: selectedLayer!.x, layerY: selectedLayer!.y, cropX: 0, cropY: 0, cropW: 0, cropH: 0 });
@@ -537,6 +541,10 @@ export default function CanvasEditor({
 
     const layerId = hitTestLayer(mx, my);
     if (layerId) {
+      const layer = layers.find(l => l.id === layerId);
+      if (layer && layer.locked) {
+        return;
+      }
       onSelectLayer(layerId);
       setIsDragging(true);
       setDragStart({ x: mx, y: my, layerX: selectedLayer!.x, layerY: selectedLayer!.y, cropX: 0, cropY: 0, cropW: 0, cropH: 0 });
