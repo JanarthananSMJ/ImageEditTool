@@ -4,12 +4,10 @@ import type { Layer, ImageLayer, TextLayer, Crop, CropType } from '../types/edit
 interface EditorState {
   canvasWidth: number;
   canvasHeight: number;
-  canvasBackgroundColor: string;
   layers: Layer[];
   selectedLayerId: string | null;
   crop: Crop | null;
   cropType: CropType;
-  canvasBackgroundColor: string;
   isDirty: boolean;
   history: EditorState[];
   historyIndex: number;
@@ -37,7 +35,6 @@ const generateId = () => Math.random().toString(36).substring(2, 11);
 const initialState: EditorState = {
   canvasWidth: 800,
   canvasHeight: 600,
-  canvasBackgroundColor: '#ffffff',
   layers: [],
   selectedLayerId: null,
   crop: null,
@@ -185,10 +182,6 @@ function editorReducer(state: EditorState, action: LayerAction): EditorState {
 
     case 'SELECT_LAYER': {
       return { ...state, selectedLayerId: action.id };
-    }
-
-    case 'SET_CANVAS_BG_COLOR': {
-      return { ...pushHistory(state), canvasBackgroundColor: action.color, isDirty: true };
     }
 
     case 'SET_CANVAS_SIZE': {

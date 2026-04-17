@@ -8,7 +8,7 @@ import Toast from './components/Toast';
 import type { Layer } from './types/editor';
 
 function App() {
-  const { state, addTemplate, addPhoto, addText, updateLayer, deleteLayer, duplicateLayer, moveLayer, selectLayer, setCanvasSize, setCanvasBackgroundColor, setCrop, updateCrop, setCropType, undo, redo } = useLayerManager();
+  const { state, addTemplate, addPhoto, addText, updateLayer, deleteLayer, duplicateLayer, moveLayer, selectLayer, setCanvasSize, setCrop, updateCrop, setCropType, undo, redo } = useLayerManager();
   const [showExportModal, setShowExportModal] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
@@ -100,9 +100,7 @@ function App() {
                 layers={state.layers}
                 canvasWidth={state.canvasWidth}
                 canvasHeight={state.canvasHeight}
-                canvasBackgroundColor={state.canvasBackgroundColor}
                 onCanvasResize={setCanvasSize}
-                setCanvasBackgroundColor={setCanvasBackgroundColor}
                 crop={state.crop}
                 cropType={state.cropType}
                 onSetCrop={setCrop}
@@ -128,9 +126,7 @@ function App() {
                 layers={state.layers}
                 canvasWidth={state.canvasWidth}
                 canvasHeight={state.canvasHeight}
-                canvasBackgroundColor={state.canvasBackgroundColor}
                 onCanvasResize={setCanvasSize}
-                setCanvasBackgroundColor={setCanvasBackgroundColor}
                 crop={state.crop}
                 cropType={state.cropType}
                 onSetCrop={setCrop}
@@ -152,7 +148,7 @@ function App() {
             layers={state.layers}
             canvasWidth={state.canvasWidth}
             canvasHeight={state.canvasHeight}
-            canvasBackgroundColor={state.canvasBackgroundColor}
+            canvasBackgroundColor="#ffffff"
             selectedLayerId={state.selectedLayerId}
             onSelectLayer={selectLayer}
             onUpdateLayer={updateLayer}

@@ -9,9 +9,7 @@ interface SidebarProps {
   layers: Layer[];
   canvasWidth: number;
   canvasHeight: number;
-  canvasBackgroundColor: string;
   onCanvasResize: (width: number, height: number) => void;
-  setCanvasBackgroundColor: (color: string) => void;
   crop: Crop | null;
   cropType: CropType;
   onSetCrop: (crop: Crop | null, cropType: CropType) => void;
@@ -36,9 +34,7 @@ export default function Sidebar({
   layers,
   canvasWidth,
   canvasHeight,
-  canvasBackgroundColor,
   onCanvasResize,
-  setCanvasBackgroundColor,
   crop,
   cropType,
   onSetCrop,
