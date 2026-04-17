@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import type { Layer, ImageLayer, TextLayer, Crop } from '../types/editor';
-import { ZoomIn, ZoomOut, Download } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { saveAs } from 'file-saver';
 
 interface CanvasEditorProps {
@@ -868,28 +868,12 @@ export default function CanvasEditor({
         onChange={handleFileChange}
       />
 
-      <div className="absolute bottom-4 left-4 flex items-center gap-1 bg-white rounded-lg shadow-md p-1">
-        <button
-          onClick={() => setZoom(Math.max(25, zoom - 25))}
-          className="p-3 hover:bg-gray-100 rounded touch-manipulation"
-        >
-          <ZoomOut className="w-5 h-5" />
-        </button>
-        <span className="text-xs px-2 min-w-[50px] text-center font-medium">{zoom}%</span>
-        <button
-          onClick={() => setZoom(Math.min(200, zoom + 25))}
-          className="p-3 hover:bg-gray-100 rounded touch-manipulation"
-        >
-          <ZoomIn className="w-5 h-5" />
-        </button>
-      </div>
-
       <button
         onClick={handleDownloadWhatsAppDP}
-        className="absolute bottom-4 right-4 flex items-center gap-2 px-3 py-2 bg-green-500 text-white rounded-lg shadow-md hover:bg-green-600 touch-manipulation"
+        className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg shadow-md hover:bg-green-600 touch-manipulation"
       >
         <Download className="w-4 h-4" />
-        <span className="text-xs font-medium">WhatsApp DP</span>
+        <span className="text-sm font-medium">WhatsApp DP</span>
       </button>
     </div>
   );
