@@ -1,16 +1,20 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import type { Layer, ImageLayer, TextLayer, Crop } from '../types/editor';
-import { ZoomIn, ZoomOut } from 'lucide-react';
+import { ZoomIn, ZoomOut, Download } from 'lucide-react';
+import { saveAs } from 'file-saver';
 
 interface CanvasEditorProps {
   layers: Layer[];
   canvasWidth: number;
   canvasHeight: number;
+  canvasBackgroundColor: string;
   selectedLayerId: string | null;
   onSelectLayer: (id: string | null) => void;
   onUpdateLayer: (id: string, patch: Partial<Layer>) => void;
   crop: Crop | null;
   onUpdateCrop: (patch: Partial<Crop>) => void;
+  onAddPhoto: (src: string, width: number, height: number) => void;
+  onError?: (message: string) => void;
 }
 
 type Handle = 'tl' | 'tr' | 'bl' | 'br' | 'tm' | 'bm' | 'lm' | 'rm' | 'rotate' | null;
@@ -19,13 +23,17 @@ export default function CanvasEditor({
   layers,
   canvasWidth,
   canvasHeight,
+  canvasBackgroundColor,
   selectedLayerId,
   onSelectLayer,
   onUpdateLayer,
   crop,
   onUpdateCrop,
+  onAddPhoto,
+  onError,
 }: CanvasEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [isRotating, setIsRotating] = useState(false);
@@ -40,6 +48,10 @@ export default function CanvasEditor({
   const [panStart, setPanStart] = useState({ x: 0, y: 0, offsetX: 0, offsetY: 0 });
 
   const selectedLayer = layers.find(l => l.id === selectedLayerId) as ImageLayer | TextLayer | null;
+  const dmklayers = layers.filter(l => l.type === 'photo' && (l as ImageLayer).src.includes('DMK.png'));
+  const otherPhotos = layers.filter(l => l.type === 'photo' && !(l as ImageLayer).src.includes('DMK.png'));
+  const hasDMK = dmklayers.length > 0;
+  const showUploadButton = hasDMK && otherPhotos.length === 0;
 
   useEffect(() => {
     const cache = new Map<string, HTMLImageElement>();
@@ -75,7 +87,7 @@ export default function CanvasEditor({
     const ctx = canvas.getContext('2d')!;
     
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = canvasBackgroundColor;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     layers.filter(l => l.visible).forEach(layer => {
@@ -179,6 +191,14 @@ export default function CanvasEditor({
     ctx.scale(layer.flipH ? -1 : 1, layer.flipV ? -1 : 1);
     ctx.drawImage(img, -scaledWidth / 2, -scaledHeight / 2, scaledWidth, scaledHeight);
     ctx.filter = 'none';
+
+    if (selectedLayerId === layer.id) {
+      ctx.strokeStyle = 'blue';
+      ctx.lineWidth = 8;
+      ctx.setLineDash([10, 5]);
+      ctx.strokeRect(-scaledWidth / 2, -scaledHeight / 2, scaledWidth, scaledHeight);
+      ctx.setLineDash([]);
+    }
   };
 
   const renderTextLayer = (ctx: CanvasRenderingContext2D, layer: TextLayer) => {
@@ -203,6 +223,16 @@ export default function CanvasEditor({
       
       ctx.fillText(line, layer.x, lineY);
     });
+
+    if (selectedLayerId === layer.id) {
+      const textWidth = Math.max(100, layer.text.length * layer.fontSize * 0.6);
+      const textHeight = layer.fontSize * 1.2 * lines.length;
+      ctx.strokeStyle = 'blue';
+      ctx.lineWidth = 8;
+      ctx.setLineDash([10, 5]);
+      ctx.strokeRect(layer.x - textWidth / 2, layer.y, textWidth, textHeight);
+      ctx.setLineDash([]);
+    }
   };
 
   const drawSelectionBox = (ctx: CanvasRenderingContext2D, layer: Layer) => {
@@ -616,6 +646,36 @@ export default function CanvasEditor({
     setZoom(newZoom);
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    if (!file.type.startsWith('image/')) {
+      onError?.('Please upload valid image files only');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new window.Image();
+      img.onload = () => {
+        let src = reader.result as string;
+        if (img.width > 4000 || img.height > 4000) {
+          const canvas = document.createElement('canvas');
+          const scale = 4000 / Math.max(img.width, img.height);
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+          const ctx = canvas.getContext('2d')!;
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          src = canvas.toDataURL('image/jpeg', 0.9);
+        }
+        onAddPhoto(src, img.width, img.height);
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
   const getTouchDistance = (touches: React.TouchList) => {
     const dx = touches[0].clientX - touches[1].clientX;
     const dy = touches[0].clientY - touches[1].clientY;
@@ -669,6 +729,94 @@ export default function CanvasEditor({
     setIsPanning(false);
   };
 
+  const handleDownloadWhatsAppDP = async () => {
+    const dpSize = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width = dpSize;
+    canvas.height = dpSize;
+    
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = canvasBackgroundColor;
+    ctx.fillRect(0, 0, dpSize, dpSize);
+
+    const scale = dpSize / Math.max(canvasWidth, canvasHeight);
+
+    for (const layer of layers) {
+      if (!layer.visible) continue;
+      ctx.save();
+      
+      if (layer.type === 'template' || layer.type === 'photo') {
+        const imgLayer = layer as ImageLayer;
+        const img = imageCache.get(layer.id);
+        if (!img) continue;
+
+        const x = imgLayer.x * scale;
+        const y = imgLayer.y * scale;
+        const width = imgLayer.width * scale;
+        const height = imgLayer.height * scale;
+
+        ctx.globalAlpha = imgLayer.opacity;
+        const brightness = 100 + imgLayer.brightness;
+        const contrast = 100 + imgLayer.contrast;
+        const saturation = 100 + imgLayer.saturation;
+        ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
+
+        ctx.translate(x + width / 2, y + height / 2);
+        ctx.rotate((imgLayer.rotation * Math.PI) / 180);
+        ctx.scale(imgLayer.flipH ? -1 : 1, imgLayer.flipV ? -1 : 1);
+        ctx.drawImage(img, -width / 2, -height / 2, width, height);
+        ctx.filter = 'none';
+      } else if (layer.type === 'text') {
+        const textLayer = layer as TextLayer;
+        const x = textLayer.x * scale;
+        const y = textLayer.y * scale;
+        const fontSize = textLayer.fontSize * scale;
+
+        ctx.globalAlpha = textLayer.opacity;
+        ctx.font = `${textLayer.fontStyle} ${textLayer.fontWeight} ${fontSize}px ${textLayer.fontFamily}`;
+        ctx.fillStyle = textLayer.color;
+        ctx.textAlign = textLayer.textAlign;
+        ctx.textBaseline = 'top';
+
+        const lines = textLayer.text.split('\n');
+        const lineHeight = fontSize * textLayer.lineHeight;
+
+        lines.forEach((line, i) => {
+          const lineY = y + i * lineHeight;
+          if (textLayer.strokeWidth > 0) {
+            ctx.strokeStyle = textLayer.strokeColor;
+            ctx.lineWidth = textLayer.strokeWidth * scale;
+            ctx.lineJoin = 'round';
+            ctx.strokeText(line, x, lineY);
+          }
+          ctx.fillText(line, x, lineY);
+        });
+      }
+      
+      ctx.restore();
+    }
+
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = dpSize;
+        tempCanvas.height = dpSize;
+        const tempCtx = tempCanvas.getContext('2d')!;
+        
+        tempCtx.beginPath();
+        tempCtx.arc(dpSize / 2, dpSize / 2, dpSize / 2, 0, Math.PI * 2);
+        tempCtx.clip();
+        tempCtx.drawImage(canvas, 0, 0);
+        
+        tempCanvas.toBlob((circleBlob) => {
+          if (circleBlob) {
+            saveAs(circleBlob, `whatsapp-dp-${new Date().toISOString().split('T')[0]}.png`);
+          }
+        }, 'image/png');
+      }
+    }, 'image/png');
+  };
+
   const hasTemplate = layers.some(l => l.type === 'template');
 
   return (
@@ -700,7 +848,25 @@ export default function CanvasEditor({
           onTouchMove={(e) => { handleTouchMoveZoom(e); handleTouchMove(e); }}
           onTouchEnd={() => { handleTouchEndZoom(); handleMouseUp(); }}
         />
+        {showUploadButton && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="bg-orange-500 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-orange-600 transition-colors pointer-events-auto"
+            >
+              Upload Your Image
+            </button>
+          </div>
+        )}
       </div>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileChange}
+      />
 
       <div className="absolute bottom-4 left-4 flex items-center gap-1 bg-white rounded-lg shadow-md p-1">
         <button
@@ -717,6 +883,14 @@ export default function CanvasEditor({
           <ZoomIn className="w-5 h-5" />
         </button>
       </div>
+
+      <button
+        onClick={handleDownloadWhatsAppDP}
+        className="absolute bottom-4 right-4 flex items-center gap-2 px-3 py-2 bg-green-500 text-white rounded-lg shadow-md hover:bg-green-600 touch-manipulation"
+      >
+        <Download className="w-4 h-4" />
+        <span className="text-xs font-medium">WhatsApp DP</span>
+      </button>
     </div>
   );
 }

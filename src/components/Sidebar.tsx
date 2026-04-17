@@ -4,12 +4,14 @@ import type { Layer, ImageLayer, TextLayer, Crop, CropType } from '../types/edit
 
 interface SidebarProps {
   onAddTemplate: (src: string) => void;
-  onAddPhoto: (src: string) => void;
+  onAddPhoto: (src: string, width: number, height: number) => void;
   onAddText: () => void;
   layers: Layer[];
   canvasWidth: number;
   canvasHeight: number;
+  canvasBackgroundColor: string;
   onCanvasResize: (width: number, height: number) => void;
+  setCanvasBackgroundColor: (color: string) => void;
   crop: Crop | null;
   cropType: CropType;
   onSetCrop: (crop: Crop | null, cropType: CropType) => void;
@@ -25,7 +27,7 @@ interface SidebarProps {
   isMobile?: boolean;
 }
 
-type SidebarSection = 'canvas' | 'upload' | 'crop' | 'edit';
+type SidebarSection = 'canvas' | 'upload' | 'crop' | 'edit' | 'layer';
 
 export default function Sidebar({
   onAddTemplate,
@@ -34,12 +36,15 @@ export default function Sidebar({
   layers,
   canvasWidth,
   canvasHeight,
+  canvasBackgroundColor,
   onCanvasResize,
+  setCanvasBackgroundColor,
   crop,
   cropType,
   onSetCrop,
   onSetCropType,
   selectedLayerId,
+  onSelectLayer,
   onUpdateLayer,
   onDeleteLayer,
   onDuplicateLayer,
@@ -91,7 +96,7 @@ export default function Sidebar({
             src = canvas.toDataURL('image/jpeg', 0.9);
           }
           if (type === 'template') onAddTemplate(src);
-          else onAddPhoto(src);
+          else onAddPhoto(src, img.width, img.height);
         };
         img.src = reader.result as string;
       };
@@ -154,6 +159,12 @@ export default function Sidebar({
             onClick={() => toggleSection('edit')}
             isActive={expanded === 'edit'}
           />
+          <MobileSidebarItem
+            icon={<Layers className="w-5 h-5" />}
+            label="Layer"
+            onClick={() => toggleSection('layer')}
+            isActive={expanded === 'layer'}
+          />
         </div>
         {expanded === 'canvas' && (
           <div className="px-4 py-3 space-y-3 overflow-y-auto max-h-[45vh]">
@@ -204,6 +215,15 @@ export default function Sidebar({
               <Type className="w-4 h-4" />
               <span className="text-sm font-medium">Add Text</span>
             </button>
+            <button onClick={() => {
+              onCanvasResize(512, 512);
+              const img = new window.Image();
+              img.onload = () => onAddPhoto(img.src, img.width, img.height);
+              img.onerror = () => onError?.('DMK.png not found in /Political_Parties_template/DMK/');
+              img.src = '/Political_Parties_template/DMK/DMK.png';
+            }} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-orange-500 rounded-lg">
+              <span className="text-sm font-medium">DMK</span>
+            </button>
           </div>
         )}
         {expanded === 'crop' && (
@@ -232,11 +252,27 @@ export default function Sidebar({
             ) : (
               <ImageEditControls layer={selectedLayer as ImageLayer} onUpdateLayer={onUpdateLayer} />
             )}
-            <LayerActions layer={selectedLayer} onUpdateLayer={onUpdateLayer} onDelete={onDeleteLayer} onDuplicate={onDuplicateLayer} onMove={onMoveLayer} />
+              <LayerActions layer={selectedLayer} onUpdateLayer={onUpdateLayer} onDelete={onDeleteLayer} onDuplicate={onDuplicateLayer} />
           </div>
         )}
         {expanded === 'edit' && !selectedLayer && (
           <div className="px-4 py-6 text-xs text-gray-500 text-center">Select a layer to edit</div>
+        )}
+        {expanded === 'layer' && (
+          <div className="px-4 py-3 space-y-2 overflow-y-auto max-h-[45vh]">
+              {layers.map((layer) => (
+              <LayerItem
+                key={layer.id}
+                layer={layer}
+                isSelected={selectedLayerId === layer.id}
+                onSelect={() => onSelectLayer?.(layer.id)}
+                onMoveUp={() => onMoveLayer(layer.id, 'up')}
+                onMoveDown={() => onMoveLayer(layer.id, 'down')}
+                onDuplicate={() => onDuplicateLayer(layer.id)}
+                onDelete={() => onDeleteLayer(layer.id)}
+              />
+            ))}
+          </div>
         )}
       </div>
     );
@@ -296,11 +332,11 @@ export default function Sidebar({
                   onKeyDown={(e) => e.key === 'Enter' && (e.currentTarget as HTMLInputElement).blur()}
                   className="w-full px-3 py-2 text-sm bg-gray-800 border border-gray-600 rounded-lg text-center focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
                   placeholder="Height"
-                />
-              </div>
-              <div className="text-xs text-gray-500 text-center pt-2 border-t border-gray-700">
-                {canvasWidth} × {canvasHeight} px
-              </div>
+/>
+                </div>
+                <div className="text-xs text-gray-500 text-center pt-2 border-t border-gray-700">
+                  {canvasWidth} × {canvasHeight} px
+                </div>
             </div>
           )}
         </SidebarItem>
@@ -331,6 +367,18 @@ export default function Sidebar({
               >
                 <Type className="w-4 h-4" />
                 <span className="text-sm font-medium">Add Text</span>
+              </button>
+              <button
+                onClick={() => {
+                  onCanvasResize(512, 512);
+                  const img = new window.Image();
+                  img.onload = () => onAddPhoto(img.src, img.width, img.height);
+                  img.onerror = () => onError?.('DMK.png not found in /Political_Parties_template/DMK/');
+                  img.src = '/Political_Parties_template/DMK/DMK.png';
+                }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-orange-500 rounded-lg hover:bg-orange-600 transition-colors"
+              >
+                <span className="text-sm font-medium">DMK</span>
               </button>
               <div className="text-xs text-gray-500 text-center pt-2 border-t border-gray-700">
                 {canvasWidth} × {canvasHeight} px
@@ -392,28 +440,42 @@ export default function Sidebar({
           {expanded === 'edit' && selectedLayer && (
             <div className="px-4 py-3 space-y-4">
               {isTextLayer ? (
-                <TextEditControls
-                  layer={selectedLayer as TextLayer}
-                  onUpdateLayer={onUpdateLayer}
-                />
+                <TextEditControls layer={selectedLayer as TextLayer} onUpdateLayer={onUpdateLayer} />
               ) : (
-                <ImageEditControls
-                  layer={selectedLayer as ImageLayer}
-                  onUpdateLayer={onUpdateLayer}
-                />
+                <ImageEditControls layer={selectedLayer as ImageLayer} onUpdateLayer={onUpdateLayer} />
               )}
-              <LayerActions
-                layer={selectedLayer}
-                onUpdateLayer={onUpdateLayer}
-                onDelete={onDeleteLayer}
-                onDuplicate={onDuplicateLayer}
-                onMove={onMoveLayer}
-              />
+              <LayerActions layer={selectedLayer} onUpdateLayer={onUpdateLayer} onDelete={onDeleteLayer} onDuplicate={onDuplicateLayer} />
             </div>
           )}
           {expanded === 'edit' && !selectedLayer && (
             <div className="px-4 py-6 text-xs text-gray-500 text-center">
               Select a layer to edit
+            </div>
+          )}
+        </SidebarItem>
+
+        <SidebarItem
+          icon={<Layers className="w-5 h-5" />}
+          label="Layer"
+          expanded={expanded}
+          section="layer"
+          isHovered={isHovered}
+          onClick={() => toggleSection('layer')}
+        >
+          {expanded === 'layer' && (
+            <div className="px-4 py-3 space-y-2 overflow-y-auto max-h-[50vh]">
+            {layers.map((layer) => (
+                <LayerItem
+                  key={layer.id}
+                  layer={layer}
+                  isSelected={selectedLayerId === layer.id}
+                  onSelect={() => onSelectLayer?.(layer.id)}
+                  onMoveUp={() => onMoveLayer(layer.id, 'up')}
+                  onMoveDown={() => onMoveLayer(layer.id, 'down')}
+                  onDuplicate={() => onDuplicateLayer(layer.id)}
+                  onDelete={() => onDeleteLayer(layer.id)}
+                />
+              ))}
             </div>
           )}
         </SidebarItem>
@@ -728,35 +790,112 @@ function ImageEditControls({
   );
 }
 
+function LayerItem({
+  layer,
+  isSelected,
+  onSelect,
+  onMoveUp,
+  onMoveDown,
+  onDuplicate,
+  onDelete,
+}: {
+  layer: Layer;
+  isSelected: boolean;
+  onSelect: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
+}) {
+  const getLayerName = () => {
+    if (layer.type === 'text') {
+      return (layer as TextLayer).text.slice(0, 15) + ((layer as TextLayer).text.length > 15 ? '...' : '');
+    } else {
+      return layer.type === 'template' ? 'Template' : 'Photo';
+    }
+  };
+
+  const getThumbnail = () => {
+    if (layer.type === 'text') {
+      const textLayer = layer as TextLayer;
+      return (
+        <div
+          className="w-10 h-7.5 border border-gray-600 rounded flex items-center justify-center text-xs"
+          style={{ backgroundColor: '#d1d5db', color: textLayer.color, fontFamily: textLayer.fontFamily }}
+        >
+          {textLayer.text.slice(0, 3)}
+        </div>
+      );
+    } else {
+      const imgLayer = layer as ImageLayer;
+      return (
+        <div
+          className="w-10 h-7.5 border border-gray-600 rounded bg-cover bg-center"
+          style={{ backgroundImage: `url(${imgLayer.src})`, backgroundColor: '#d1d5db' }}
+        />
+      );
+    }
+  };
+
+  return (
+    <div
+      className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer w-full text-left ${
+        isSelected ? 'bg-orange-500' : 'bg-gray-800 hover:bg-gray-700'
+      }`}
+      onClick={onSelect}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(); } }}
+    >
+      {getThumbnail()}
+      <div className="flex-1 text-xs text-gray-300">{getLayerName()}</div>
+      <div className="flex gap-1">
+        <button
+          onClick={(e) => { e.stopPropagation(); onMoveUp(); }}
+          className="p-1 bg-gray-700 rounded hover:bg-gray-600"
+          title="Move up"
+        >
+          <ArrowUp className="w-3 h-3" />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onMoveDown(); }}
+          className="p-1 bg-gray-700 rounded hover:bg-gray-600"
+          title="Move down"
+        >
+          <ArrowDown className="w-3 h-3" />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
+          className="p-1 bg-gray-700 rounded hover:bg-gray-600"
+          title="Duplicate"
+        >
+          <Copy className="w-3 h-3" />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          className="p-1 bg-red-700 rounded hover:bg-red-600"
+          title="Delete"
+        >
+          <Trash2 className="w-3 h-3" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function LayerActions({
   layer,
   onUpdateLayer,
   onDelete,
   onDuplicate,
-  onMove,
 }: {
   layer: Layer;
   onUpdateLayer: (id: string, patch: Partial<Layer>) => void;
   onDelete: (id: string) => void;
   onDuplicate: (id: string) => void;
-  onMove: (id: string, direction: 'up' | 'down') => void;
 }) {
   return (
     <div className="flex items-center gap-2 pt-4 border-t border-gray-700">
-      <button
-        onClick={() => onMove(layer.id, 'up')}
-        className="p-2.5 bg-gray-800 rounded-lg hover:bg-gray-700"
-        title="Move up"
-      >
-        <ArrowUp className="w-4 h-4" />
-      </button>
-      <button
-        onClick={() => onMove(layer.id, 'down')}
-        className="p-2.5 bg-gray-800 rounded-lg hover:bg-gray-700"
-        title="Move down"
-      >
-        <ArrowDown className="w-4 h-4" />
-      </button>
       <button
         onClick={() => onDuplicate(layer.id)}
         className="p-2.5 bg-gray-800 rounded-lg hover:bg-gray-700"

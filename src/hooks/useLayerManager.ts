@@ -4,36 +4,40 @@ import type { Layer, ImageLayer, TextLayer, Crop, CropType } from '../types/edit
 interface EditorState {
   canvasWidth: number;
   canvasHeight: number;
+  canvasBackgroundColor: string;
   layers: Layer[];
   selectedLayerId: string | null;
   crop: Crop | null;
   cropType: CropType;
+  canvasBackgroundColor: string;
   isDirty: boolean;
   history: EditorState[];
   historyIndex: number;
 }
 
-type LayerAction =
-  | { type: 'ADD_TEMPLATE'; src: string }
-  | { type: 'ADD_PHOTO'; src: string }
-  | { type: 'ADD_TEXT' }
-  | { type: 'UPDATE_LAYER'; id: string; patch: Partial<Layer> }
-  | { type: 'DELETE_LAYER'; id: string }
-  | { type: 'DUPLICATE_LAYER'; id: string }
-  | { type: 'MOVE_LAYER'; id: string; direction: 'up' | 'down' }
-  | { type: 'SELECT_LAYER'; id: string | null }
-  | { type: 'SET_CANVAS_SIZE'; width: number; height: number }
-  | { type: 'SET_CROP'; crop: Crop | null; cropType: CropType }
-  | { type: 'UPDATE_CROP'; patch: Partial<Crop> }
-  | { type: 'SET_CROP_TYPE'; cropType: CropType }
-  | { type: 'UNDO' }
-  | { type: 'REDO' };
+  type LayerAction =
+    | { type: 'ADD_TEMPLATE'; src: string }
+    | { type: 'ADD_PHOTO'; src: string; width: number; height: number }
+    | { type: 'ADD_TEXT' }
+    | { type: 'UPDATE_LAYER'; id: string; patch: Partial<Layer> }
+    | { type: 'DELETE_LAYER'; id: string }
+    | { type: 'DUPLICATE_LAYER'; id: string }
+    | { type: 'MOVE_LAYER'; id: string; direction: 'up' | 'down' }
+    | { type: 'SELECT_LAYER'; id: string | null }
+    | { type: 'SET_CANVAS_SIZE'; width: number; height: number }
+    | { type: 'SET_CANVAS_BG_COLOR'; color: string }
+    | { type: 'SET_CROP'; crop: Crop | null; cropType: CropType }
+    | { type: 'UPDATE_CROP'; patch: Partial<Crop> }
+    | { type: 'SET_CROP_TYPE'; cropType: CropType }
+    | { type: 'UNDO' }
+    | { type: 'REDO' };
 
 const generateId = () => Math.random().toString(36).substring(2, 11);
 
 const initialState: EditorState = {
   canvasWidth: 800,
   canvasHeight: 600,
+  canvasBackgroundColor: '#ffffff',
   layers: [],
   selectedLayerId: null,
   crop: null,
@@ -101,10 +105,10 @@ function editorReducer(state: EditorState, action: LayerAction): EditorState {
         id: generateId(),
         type: 'photo',
         src: action.src,
-        x: state.canvasWidth / 2 - 100,
-        y: state.canvasHeight / 2 - 100,
-        width: 200,
-        height: 200,
+        x: state.canvasWidth / 2 - action.width / 2,
+        y: state.canvasHeight / 2 - action.height / 2,
+        width: action.width,
+        height: action.height,
         rotation: 0,
         scaleX: 1,
         scaleY: 1,
@@ -183,6 +187,10 @@ function editorReducer(state: EditorState, action: LayerAction): EditorState {
       return { ...state, selectedLayerId: action.id };
     }
 
+    case 'SET_CANVAS_BG_COLOR': {
+      return { ...pushHistory(state), canvasBackgroundColor: action.color, isDirty: true };
+    }
+
     case 'SET_CANVAS_SIZE': {
       const scaleX = action.width / state.canvasWidth;
       const scaleY = action.height / state.canvasHeight;
@@ -228,7 +236,7 @@ export function useLayerManager() {
   const [state, dispatch] = useReducer(editorReducer, initialState);
 
   const addTemplate = useCallback((src: string) => dispatch({ type: 'ADD_TEMPLATE', src }), []);
-  const addPhoto = useCallback((src: string) => dispatch({ type: 'ADD_PHOTO', src }), []);
+  const addPhoto = useCallback((src: string, width: number, height: number) => dispatch({ type: 'ADD_PHOTO', src, width, height }), []);
   const addText = useCallback(() => dispatch({ type: 'ADD_TEXT' }), []);
   const updateLayer = useCallback((id: string, patch: Partial<Layer>) => dispatch({ type: 'UPDATE_LAYER', id, patch }), []);
   const deleteLayer = useCallback((id: string) => dispatch({ type: 'DELETE_LAYER', id }), []);
@@ -239,6 +247,7 @@ export function useLayerManager() {
   const setCrop = useCallback((crop: Crop | null, cropType: CropType) => dispatch({ type: 'SET_CROP', crop, cropType }), []);
   const updateCrop = useCallback((patch: Partial<Crop>) => dispatch({ type: 'UPDATE_CROP', patch }), []);
   const setCropType = useCallback((cropType: CropType) => dispatch({ type: 'SET_CROP_TYPE', cropType }), []);
+  const setCanvasBackgroundColor = useCallback((color: string) => dispatch({ type: 'SET_CANVAS_BG_COLOR', color }), []);
   const undo = useCallback(() => dispatch({ type: 'UNDO' }), []);
   const redo = useCallback(() => dispatch({ type: 'REDO' }), []);
 
@@ -256,6 +265,7 @@ export function useLayerManager() {
     setCrop,
     updateCrop,
     setCropType,
+    setCanvasBackgroundColor,
     undo,
     redo,
   };

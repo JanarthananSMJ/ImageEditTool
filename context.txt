@@ -17,6 +17,30 @@
    - Crop options: Circle, Square, Rectangle (16:9)
    - Text tool moved to sidebar
    - Image/text edit tools moved to sidebar
+9. ✅ DMK Template Integration:
+   - Added DMK button in upload tab to auto-load DMK.png as photo layer
+   - Fixed photo uploads to maintain original image size (no stretching)
+   - Added conditional "Upload Your Image" button in canvas center when DMK layer is present
+10. ✅ Layer Management Panel:
+    - Added new "Layer" tab in sidebar showing thumbnails and names of all canvas objects
+    - Each layer item displays thumbnail (image or text preview) with name
+    - Z-index controls (move up/down, duplicate, delete) per layer
+    - Removed z-index controls from edit tab; moved to layer tab
+    - Clicking a layer item selects the corresponding object on canvas (bidirectional sync)
+    - Selected layer highlighted with orange background in panel and blue dashed border on canvas
+11. ✅ WhatsApp DP Size on DMK Load:
+    - Clicking DMK button resizes canvas to 512×512 (WhatsApp DP size) before loading DMK.png
+    - Maintains original image dimensions for the DMK layer (no stretching)
+    - Fixed: resize now works on desktop (was only working on mobile)
+12. ✅ Layer Selection Fix:
+    - Added missing `onSelectLayer` prop to both mobile and desktop Sidebar instances in App.tsx
+    - This enables clicking layer items in the Layer tab to select corresponding objects on canvas
+    - Selection state is synchronized globally via `selectedLayerId`
+13. ✅ Canvas Background Color Picker:
+    - Added color picker in Canvas tab to change canvas background color
+    - Stores color in state (canvasBackgroundColor) and updates canvas in real-time
+    - Includes both color input and text input for hex values
+    - Color change persists across undo/redo history
 
 ## Project Complete!
 Run with: `npm run dev`
